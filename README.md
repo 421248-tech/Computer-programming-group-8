@@ -1,8 +1,9 @@
+
 ## Computer-programming-group-8
 
 # App and Name
 ## Our app is going to be based of of a drawing app, the name would be InkLine, it might change later.
-<img width="1000" height="684" alt="image" src="https://github.com/user-attachments/assets/fa9925c9-880e-4fe8-b364-34201c18f8f3" />
+<img width="1920" height="955" alt="Screenshot 2026-10-29 at 8 02 06 AM" src="https://github.com/user-attachments/assets/c3b9bc00-3cd4-49b3-9e0c-c82b47df1895" />
 
 # Who might use our app
 ## The people that might use our app is people that are trying to get into art or post digital art online.
