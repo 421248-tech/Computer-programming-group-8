@@ -2,7 +2,7 @@
 ## Computer-programming-group-8
 
 # App and Name
-## Our app is going to be based of of a drawing app, the name would be InkLine, it might change later.
+## Our app is going to be based of of a drawing app, the name would be InkLine or Pallete, it might change later.
 <img width="1920" height="955" alt="Screenshot 2026-10-29 at 8 02 06 AM" src="https://github.com/user-attachments/assets/c3b9bc00-3cd4-49b3-9e0c-c82b47df1895" />
 
 # Who might use our app
