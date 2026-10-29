@@ -17,6 +17,9 @@
 # One question we need to research
 ## How to code to make it so the user can switch between brushes and eraser and tools with just the click of the mouse, and have them draw differently and erase.
 
+#Logo
+<img width="1000" height="1000" alt="image" src="https://github.com/user-attachments/assets/bd86aac5-7345-4c8c-a231-5105314b7504" />
+
 
 
 
