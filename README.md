@@ -9,7 +9,7 @@
 ## The people that might use our app is people that are trying to get into art or post digital art online.
 
 # What would the user do with it
-## The user would paint or draw whatever they could like, and we could possibly make a public file that people can post their work on that others can look at and get inspired by it or make something just like it, we also could add a way to input shapes to let user be able to also make abstract art.
+## The user would paint or draw whatever they could like, and we could possibly make a public file that people can post their work on that others can look at and get inspired or make something just like it, we also could add a way to input shapes to let user be able to also make abstract art.
 
 # One key input and output
 ## Key Input: Touch/Mouse Gesture Data (such as screen coordinates, pen pressure, tool selection like brush size/color, or touch drag events).
