@@ -3,7 +3,8 @@
 
 # App and Name
 ## Our app is going to be based of of a drawing app, the name would be InkLine or Pallete, it might change later.
- /<img width="990" height="920" alt="Screenshot 2026-10-29 at 8 24 27 AM" src="https://github.com/user-attachments/assets/4125cc7c-5e26-49d3-900b-d7d361deaf98" />
+ <img width="793" height="624" alt="image" src="https://github.com/user-attachments/assets/45ba3c5b-af7d-40d7-a6ce-24c6447c1a7d" />
+
 
 
 # Who might use our app
