@@ -1,0 +1,530 @@
+//InkLine| Ian Gorchos, Ian Hundley, Connor DeWeerd, Owen Sorensen| October 30/26
+
+int penSize = 3;       // current pen thickness
+int eraserSize = 20;   // current eraser thickness
+int sensitivity = 1;   // scroll wheel sensitivity (1 to 10)
+
+PGraphics canvas;      // separate drawing layer so the UI stays on top
+
+// Tools
+final int PENCIL = 0;
+final int ERASER = 1;
+final int FILL = 2;
+final int NUM_TOOLS = 3;
+int currentTool = PENCIL;
+
+// Fill settings
+final color FILL_COLOR = #000000;  // fills with black, same as the pen
+final int FILL_TOLERANCE = 128;    // how close a pixel must be to count as "the same area"
+                                   // (a high value fills right up to the edge of anti-aliased lines)
+
+// Toolbar layout (left side)
+final int TB_X = 10;
+final int TB_Y = 10;
+final int TB_BTN = 40;
+final int TB_PAD = 8;
+
+// Controls box layout (changes size when hidden)
+int boxW, boxH, boxX, boxY;
+final int FULL_W = 230;
+final int FULL_H = 163;
+final int HIDDEN_W = 44;
+final int HIDDEN_H = 42;
+
+// Settings state
+boolean showSettings = false;
+boolean controlsHidden = false;  // when true, only the settings button stays visible
+boolean draggingSlider = false;
+boolean uiClick = false;   // true when a click started on the UI (so we don't draw)
+boolean darkMode = false;  // only affects the UI, never the canvas
+
+void setup() {
+  size(800, 600);
+  boxY = 10;
+  updateBox();
+  canvas = createGraphics(width, height);
+  clearCanvas();
+}
+
+void draw() {
+  canvas.beginDraw();
+
+  if (!uiClick && mousePressed) {
+    // Right mouse button always erases; left button uses the selected tool
+    boolean erasing = (mouseButton == RIGHT) || (mouseButton == LEFT && currentTool == ERASER);
+    boolean drawing = (mouseButton == LEFT && currentTool == PENCIL);
+
+    if (drawing) {
+      canvas.stroke(0);
+      canvas.strokeWeight(penSize);
+      canvas.line(pmouseX, pmouseY, mouseX, mouseY);
+    } else if (erasing) {
+      canvas.stroke(255);
+      canvas.strokeWeight(eraserSize);
+      canvas.line(pmouseX, pmouseY, mouseX, mouseY);
+    }
+  }
+
+  canvas.endDraw();
+
+  // Show the drawing, then the UI on top of it
+  image(canvas, 0, 0);
+  drawToolbar();
+  drawControls();
+  if (showSettings) {
+    drawSettings();
+  }
+}
+
+// Resize the controls box depending on whether controls are hidden
+void updateBox() {
+  boxW = controlsHidden ? HIDDEN_W : FULL_W;
+  boxH = controlsHidden ? HIDDEN_H : FULL_H;
+  boxX = width - boxW - 10;
+}
+
+// ---------- UI theme colors (canvas is not affected) ----------
+
+color uiFill()    { return darkMode ? color(50, 50, 50, 235)    : color(245, 245, 245, 230); }
+color uiText()    { return darkMode ? color(240) : color(0); }
+color uiStroke()  { return darkMode ? color(200) : color(0); }
+color btnFill()   { return darkMode ? color(70)  : color(255); }
+color btnHover()  { return darkMode ? color(95)  : color(225); }
+color btnActive() { return darkMode ? color(80, 100, 150) : color(200, 215, 255); }
+color trackColor(){ return darkMode ? color(150) : color(120); }
+
+// ---------- Fill tool ----------
+
+// True if two colors are within the fill tolerance of each other
+boolean similar(color a, color b) {
+  int dr = abs(((a >> 16) & 0xFF) - ((b >> 16) & 0xFF));
+  int dg = abs(((a >> 8) & 0xFF) - ((b >> 8) & 0xFF));
+  int db = abs((a & 0xFF) - (b & 0xFF));
+  return max(dr, max(dg, db)) <= FILL_TOLERANCE;
+}
+
+// Flood fill starting at (startX, startY) on the canvas layer
+void floodFill(int startX, int startY) {
+  if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
+
+  canvas.beginDraw();
+  canvas.loadPixels();
+
+  color target = canvas.pixels[startY * width + startX];
+  color fillCol = color(red(FILL_COLOR), green(FILL_COLOR), blue(FILL_COLOR));
+
+  // Clicking an area that is already the fill color does nothing
+  if (similar(target, fillCol)) {
+    canvas.endDraw();
+    return;
+  }
+
+  int[] stack = new int[width * height];
+  int sp = 0;
+
+  canvas.pixels[startY * width + startX] = fillCol;
+  stack[sp++] = startY * width + startX;
+
+  while (sp > 0) {
+    int idx = stack[--sp];
+    int x = idx % width;
+    int y = idx / width;
+
+    // Check left, right, up, down neighbors
+    if (x > 0)          sp = tryFill(idx - 1, target, fillCol, stack, sp);
+    if (x < width - 1)  sp = tryFill(idx + 1, target, fillCol, stack, sp);
+    if (y > 0)          sp = tryFill(idx - width, target, fillCol, stack, sp);
+    if (y < height - 1) sp = tryFill(idx + width, target, fillCol, stack, sp);
+  }
+
+  canvas.updatePixels();
+  canvas.endDraw();
+}
+
+// Fill one pixel if it matches the target area and add it to the stack
+int tryFill(int idx, color target, color fillCol, int[] stack, int sp) {
+  if (similar(canvas.pixels[idx], target) && canvas.pixels[idx] != fillCol) {
+    canvas.pixels[idx] = fillCol;
+    stack[sp++] = idx;
+  }
+  return sp;
+}
+
+// ---------- Toolbar ----------
+
+int toolbarW() { return TB_BTN + TB_PAD * 2; }
+int toolbarH() { return NUM_TOOLS * (TB_BTN + TB_PAD) + TB_PAD; }
+int toolBtnX() { return TB_X + TB_PAD; }
+int toolBtnY(int i) { return TB_Y + TB_PAD + i * (TB_BTN + TB_PAD); }
+
+void drawToolbar() {
+  // Background
+  stroke(uiStroke());
+  strokeWeight(1);
+  fill(uiFill());
+  rect(TB_X, TB_Y, toolbarW(), toolbarH(), 8);
+
+  // Tool buttons
+  for (int i = 0; i < NUM_TOOLS; i++) {
+    int bx = toolBtnX();
+    int by = toolBtnY(i);
+    boolean hover = overRect(bx, by, TB_BTN, TB_BTN);
+
+    stroke(uiStroke());
+    strokeWeight(1);
+    if (currentTool == i) fill(btnActive());
+    else if (hover) fill(btnHover());
+    else fill(btnFill());
+    rect(bx, by, TB_BTN, TB_BTN, 6);
+
+    float cx = bx + TB_BTN / 2.0;
+    float cy = by + TB_BTN / 2.0;
+    if (i == PENCIL) drawPencilIcon(cx, cy);
+    if (i == ERASER) drawEraserIcon(cx, cy);
+    if (i == FILL)   drawFillIcon(cx, cy);
+  }
+}
+
+void drawPencilIcon(float cx, float cy) {
+  pushMatrix();
+  translate(cx, cy);
+  rotate(PI / 4);
+  stroke(0);
+  strokeWeight(1);
+
+  // Body
+  fill(250, 200, 60);
+  rect(-4, -13, 8, 17);
+
+  // Top band
+  fill(235, 130, 140);
+  rect(-4, -13, 8, 4);
+
+  // Wooden tip
+  fill(235, 205, 160);
+  triangle(-4, 4, 4, 4, 0, 12);
+
+  // Lead
+  fill(40);
+  triangle(-1.5, 9, 1.5, 9, 0, 12);
+  popMatrix();
+}
+
+void drawEraserIcon(float cx, float cy) {
+  pushMatrix();
+  translate(cx, cy);
+  rotate(-PI / 6);
+  stroke(0);
+  strokeWeight(1);
+
+  // Pink eraser end
+  fill(240, 150, 165);
+  rect(-12, -7, 14, 14, 3);
+
+  // Gray sleeve
+  fill(170, 175, 190);
+  rect(2, -7, 10, 14, 3);
+  popMatrix();
+}
+
+void drawFillIcon(float cx, float cy) {
+  pushMatrix();
+  translate(cx, cy);
+  stroke(0);
+  strokeWeight(1);
+
+  // Paint drop (falling out of the bucket)
+  fill(40);
+  noStroke();
+  ellipse(11, 8, 6, 6);
+  triangle(8.5, 6.5, 13.5, 6.5, 11, 1);
+  stroke(0);
+
+  // Bucket handle
+  noFill();
+  strokeWeight(1.5);
+  arc(-1, -6, 18, 18, PI + 0.5, TWO_PI - 0.5);
+
+  // Bucket body (tilted)
+  pushMatrix();
+  rotate(-PI / 10);
+  strokeWeight(1);
+  fill(90, 150, 230);
+  quad(-9, -6, 9, -6, 6, 9, -6, 9);
+
+  // Paint on the rim
+  fill(40);
+  rect(-9, -8, 18, 4, 2);
+  popMatrix();
+
+  popMatrix();
+}
+
+// ---------- Controls box ----------
+
+void drawControls() {
+  // Box
+  stroke(uiStroke());
+  strokeWeight(1);
+  fill(uiFill());
+  rect(boxX, boxY, boxW, boxH, 8);
+
+  // Text (only when controls are shown)
+  if (!controlsHidden) {
+    fill(uiText());
+    textAlign(LEFT, TOP);
+    textSize(14);
+    text("Controls", boxX + 12, boxY + 10);
+
+    textSize(12);
+    text("Left click:  use selected tool", boxX + 12, boxY + 36);
+    text("Right click:  erase", boxX + 12, boxY + 54);
+    text("Scroll wheel:  tool thickness", boxX + 12, boxY + 72);
+    text("Up / Down or + / -:  tool thickness", boxX + 12, boxY + 90);
+    text("P / E / F:  pencil / eraser / fill", boxX + 12, boxY + 108);
+    text("C:  clear canvas", boxX + 12, boxY + 126);
+    text("H:  hide controls", boxX + 12, boxY + 144);
+  }
+
+  // The settings button always stays visible
+  drawSettingsButton();
+}
+
+// Settings button (top right of the controls box)
+int btnX() { return boxX + boxW - 36; }
+int btnY() { return boxY + 8; }
+int btnS() { return 26; }
+
+void drawSettingsButton() {
+  boolean hover = overRect(btnX(), btnY(), btnS(), btnS());
+
+  stroke(uiStroke());
+  strokeWeight(1);
+  if (showSettings) fill(btnActive());
+  else if (hover) fill(btnHover());
+  else fill(btnFill());
+  rect(btnX(), btnY(), btnS(), btnS(), 5);
+
+  // Simple gear icon
+  float cx = btnX() + btnS() / 2.0;
+  float cy = btnY() + btnS() / 2.0;
+  pushMatrix();
+  translate(cx, cy);
+  stroke(uiText());
+  strokeWeight(2);
+  for (int i = 0; i < 8; i++) {
+    float a = i * TWO_PI / 8;
+    line(cos(a) * 6, sin(a) * 6, cos(a) * 9, sin(a) * 9);
+  }
+  strokeWeight(1);
+  fill(btnFill());
+  ellipse(0, 0, 13, 13);
+  fill(uiText());
+  ellipse(0, 0, 4, 4);
+  popMatrix();
+}
+
+// ---------- Settings panel ----------
+
+// The panel stays full width and right-aligned, whether or not controls are hidden
+int panelX() { return width - FULL_W - 10; }
+int panelY() { return boxY + boxH + 8; }
+int panelW() { return FULL_W; }
+int panelH() { return 122; }
+
+int trackX1() { return panelX() + 16; }
+int trackX2() { return panelX() + panelW() - 16; }
+int trackY()  { return panelY() + 58; }
+
+// Dark/light mode button
+int themeX() { return panelX() + 12; }
+int themeY() { return panelY() + 84; }
+int themeW() { return panelW() - 24; }
+int themeH() { return 26; }
+
+void drawSettings() {
+  // Panel
+  stroke(uiStroke());
+  strokeWeight(1);
+  fill(uiFill());
+  rect(panelX(), panelY(), panelW(), panelH(), 8);
+
+  // Text
+  fill(uiText());
+  textAlign(LEFT, TOP);
+  textSize(14);
+  text("Settings", panelX() + 12, panelY() + 10);
+  textSize(12);
+  text("Scroll sensitivity:  " + sensitivity, panelX() + 12, panelY() + 32);
+
+  // Slider track
+  stroke(trackColor());
+  strokeWeight(4);
+  line(trackX1(), trackY(), trackX2(), trackY());
+
+  // Slider knob
+  float kx = map(sensitivity, 1, 10, trackX1(), trackX2());
+  stroke(uiStroke());
+  strokeWeight(1);
+  fill(btnFill());
+  ellipse(kx, trackY(), 16, 16);
+
+  // Dark/light mode button
+  boolean hover = overRect(themeX(), themeY(), themeW(), themeH());
+  stroke(uiStroke());
+  strokeWeight(1);
+  fill(hover ? btnHover() : btnFill());
+  rect(themeX(), themeY(), themeW(), themeH(), 5);
+
+  fill(uiText());
+  textAlign(CENTER, CENTER);
+  textSize(12);
+  text(darkMode ? "Switch to Light Mode" : "Switch to Dark Mode",
+       themeX() + themeW() / 2.0, themeY() + themeH() / 2.0);
+  textAlign(LEFT, TOP);
+}
+
+void updateSlider() {
+  float v = map(mouseX, trackX1(), trackX2(), 1, 10);
+  sensitivity = constrain(round(v), 1, 10);
+}
+
+// ---------- Helpers ----------
+
+boolean overRect(int x, int y, int w, int h) {
+  return mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
+}
+
+void clearCanvas() {
+  canvas.beginDraw();
+  canvas.background(255);
+  canvas.endDraw();
+}
+
+// True when the eraser is the tool currently in use
+boolean usingEraser() {
+  return (mousePressed && mouseButton == RIGHT) || currentTool == ERASER;
+}
+
+// Change the thickness of whichever tool is in use (change can be negative)
+void adjustSize(int change) {
+  if (usingEraser()) {
+    eraserSize = constrain(eraserSize + change * 2, 2, 100);
+  } else {
+    penSize = constrain(penSize + change, 1, 50);
+  }
+}
+
+// ---------- Input ----------
+
+void mousePressed() {
+  // Tool buttons
+  for (int i = 0; i < NUM_TOOLS; i++) {
+    if (overRect(toolBtnX(), toolBtnY(i), TB_BTN, TB_BTN)) {
+      currentTool = i;
+      uiClick = true;
+      return;
+    }
+  }
+
+  // Anywhere else on the toolbar: don't draw underneath it
+  if (overRect(TB_X, TB_Y, toolbarW(), toolbarH())) {
+    uiClick = true;
+    return;
+  }
+
+  // Settings button
+  if (overRect(btnX(), btnY(), btnS(), btnS())) {
+    showSettings = !showSettings;
+    uiClick = true;
+    return;
+  }
+
+  // Settings panel
+  if (showSettings && overRect(panelX(), panelY(), panelW(), panelH())) {
+    uiClick = true;
+
+    // Slider
+    if (overRect(trackX1() - 10, trackY() - 14, trackX2() - trackX1() + 20, 28)) {
+      draggingSlider = true;
+      updateSlider();
+    }
+
+    // Dark/light mode button
+    if (overRect(themeX(), themeY(), themeW(), themeH())) {
+      darkMode = !darkMode;
+    }
+    return;
+  }
+
+  // Anywhere else on the controls box: don't draw underneath it
+  if (overRect(boxX, boxY, boxW, boxH)) {
+    uiClick = true;
+    return;
+  }
+
+  // Fill tool: left click fills the area under the mouse
+  if (mouseButton == LEFT && currentTool == FILL) {
+    floodFill(mouseX, mouseY);
+  }
+}
+
+void mouseDragged() {
+  if (draggingSlider) {
+    updateSlider();
+  }
+}
+
+void mouseReleased() {
+  draggingSlider = false;
+  uiClick = false;
+}
+
+void keyPressed() {
+  // Press 'c' to clear the canvas
+  if (key == 'c' || key == 'C') {
+    clearCanvas();
+  }
+
+  // Press 'h' to hide or show the controls
+  if (key == 'h' || key == 'H') {
+    controlsHidden = !controlsHidden;
+    updateBox();
+  }
+
+  // Press 'p' for the pencil, 'e' for the eraser, 'f' for fill
+  if (key == 'p' || key == 'P') {
+    currentTool = PENCIL;
+  }
+  if (key == 'e' || key == 'E') {
+    currentTool = ERASER;
+  }
+  if (key == 'f' || key == 'F') {
+    currentTool = FILL;
+  }
+
+  // UP arrow or '+' makes the current tool thicker
+  if (keyCode == UP || key == '+' || key == '=') {
+    adjustSize(1);
+  }
+
+  // DOWN arrow or '-' makes the current tool thinner
+  if (keyCode == DOWN || key == '-') {
+    adjustSize(-1);
+  }
+
+  // ']' makes the eraser bigger
+  if (key == ']') {
+    eraserSize = min(eraserSize + 2, 100);
+  }
+
+  // '[' makes the eraser smaller
+  if (key == '[') {
+    eraserSize = max(eraserSize - 2, 2);
+  }
+}
+
+// Scroll wheel changes the thickness of the current tool
+void mouseWheel(MouseEvent event) {
+  adjustSize(-(int) event.getCount() * sensitivity);
+}
