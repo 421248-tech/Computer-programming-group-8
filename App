@@ -13,8 +13,8 @@ final int FILL = 2;
 final int NUM_TOOLS = 3;
 int currentTool = PENCIL;
 
-// Colors: black first, then the colors of the rainbow
-color[] palette = { #000000, #E62828, #FF8C00, #FFD200, #28AA46, #2864E6, #4B0082, #9640C8 };
+
+color[] palette = { #000000, #E62828, #FF8C00, #FFD200, #28AA46, #2864E6, #4B0082, #FF8DA1 };
 color currentColor = #000000;   // the color used by the pencil and fill tools
 boolean showPalette = false;
 
