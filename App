@@ -13,10 +13,14 @@ final int FILL = 2;
 final int NUM_TOOLS = 3;
 int currentTool = PENCIL;
 
+// Colors: black first, then the colors of the rainbow
+color[] palette = { #000000, #E62828, #FF8C00, #FFD200, #28AA46, #2864E6, #4B0082, #9640C8 };
+color currentColor = #000000;   // the color used by the pencil and fill tools
+boolean showPalette = false;
+
 // Fill settings
-final color FILL_COLOR = #000000;  // fills with black, same as the pen
-final int FILL_TOLERANCE = 128;    // how close a pixel must be to count as "the same area"
-                                   // (a high value fills right up to the edge of anti-aliased lines)
+final int FILL_TOLERANCE = 128;        // used when filling white areas (reaches the edge of anti-aliased lines)
+final int COLOR_FILL_TOLERANCE = 40;   // used when filling colored areas (so it doesn't leak into other colors)
 
 // Toolbar layout (left side)
 final int TB_X = 10;
@@ -24,10 +28,16 @@ final int TB_Y = 10;
 final int TB_BTN = 40;
 final int TB_PAD = 8;
 
+// Color picker layout (top center)
+final int CP_BTN_W = 56;
+final int CP_BTN_H = 30;
+final int CP_SWATCH = 28;
+final int CP_PAD = 8;
+
 // Controls box layout (changes size when hidden)
 int boxW, boxH, boxX, boxY;
 final int FULL_W = 230;
-final int FULL_H = 163;
+final int FULL_H = 181;
 final int HIDDEN_W = 44;
 final int HIDDEN_H = 42;
 
@@ -55,7 +65,7 @@ void draw() {
     boolean drawing = (mouseButton == LEFT && currentTool == PENCIL);
 
     if (drawing) {
-      canvas.stroke(0);
+      canvas.stroke(currentColor);
       canvas.strokeWeight(penSize);
       canvas.line(pmouseX, pmouseY, mouseX, mouseY);
     } else if (erasing) {
@@ -70,9 +80,13 @@ void draw() {
   // Show the drawing, then the UI on top of it
   image(canvas, 0, 0);
   drawToolbar();
+  drawColorButton();
   drawControls();
   if (showSettings) {
     drawSettings();
+  }
+  if (showPalette) {
+    drawPalette();
   }
 }
 
@@ -93,14 +107,82 @@ color btnHover()  { return darkMode ? color(95)  : color(225); }
 color btnActive() { return darkMode ? color(80, 100, 150) : color(200, 215, 255); }
 color trackColor(){ return darkMode ? color(150) : color(120); }
 
+// ---------- Color picker ----------
+
+int cpBtnX() { return width / 2 - CP_BTN_W / 2; }
+int cpBtnY() { return 10; }
+
+int cpPanelW() { return palette.length * CP_SWATCH + (palette.length + 1) * CP_PAD; }
+int cpPanelH() { return CP_SWATCH + CP_PAD * 2; }
+int cpPanelX() { return width / 2 - cpPanelW() / 2; }
+int cpPanelY() { return cpBtnY() + CP_BTN_H + 8; }
+
+int swatchX(int i) { return cpPanelX() + CP_PAD + i * (CP_SWATCH + CP_PAD); }
+int swatchY()      { return cpPanelY() + CP_PAD; }
+
+// The small button at the top that shows the current color and opens the palette
+void drawColorButton() {
+  int bx = cpBtnX();
+  int by = cpBtnY();
+  boolean hover = overRect(bx, by, CP_BTN_W, CP_BTN_H);
+
+  stroke(uiStroke());
+  strokeWeight(1);
+  if (showPalette) fill(btnActive());
+  else if (hover) fill(btnHover());
+  else fill(btnFill());
+  rect(bx, by, CP_BTN_W, CP_BTN_H, 6);
+
+  // Current color swatch
+  stroke(uiStroke());
+  fill(currentColor);
+  rect(bx + 8, by + 7, 24, 16, 3);
+
+  // Little dropdown arrow
+  noStroke();
+  fill(uiText());
+  triangle(bx + 38, by + 12, bx + 48, by + 12, bx + 43, by + 19);
+}
+
+// The row of rainbow colors that opens below the button
+void drawPalette() {
+  // Panel
+  stroke(uiStroke());
+  strokeWeight(1);
+  fill(uiFill());
+  rect(cpPanelX(), cpPanelY(), cpPanelW(), cpPanelH(), 8);
+
+  // Swatches
+  for (int i = 0; i < palette.length; i++) {
+    int sx = swatchX(i);
+    int sy = swatchY();
+    boolean hover = overRect(sx, sy, CP_SWATCH, CP_SWATCH);
+
+    // Highlight the selected color with a thick outline
+    if (palette[i] == currentColor) {
+      stroke(uiText());
+      strokeWeight(3);
+    } else {
+      stroke(uiStroke());
+      strokeWeight(hover ? 2 : 1);
+    }
+    fill(palette[i]);
+    rect(sx, sy, CP_SWATCH, CP_SWATCH, 5);
+  }
+}
+
 // ---------- Fill tool ----------
 
-// True if two colors are within the fill tolerance of each other
-boolean similar(color a, color b) {
+// True if two colors are within the given tolerance of each other
+boolean similar(color a, color b, int tol) {
   int dr = abs(((a >> 16) & 0xFF) - ((b >> 16) & 0xFF));
   int dg = abs(((a >> 8) & 0xFF) - ((b >> 8) & 0xFF));
   int db = abs((a & 0xFF) - (b & 0xFF));
-  return max(dr, max(dg, db)) <= FILL_TOLERANCE;
+  return max(dr, max(dg, db)) <= tol;
+}
+
+boolean isNearWhite(color c) {
+  return ((c >> 16) & 0xFF) > 230 && ((c >> 8) & 0xFF) > 230 && (c & 0xFF) > 230;
 }
 
 // Flood fill starting at (startX, startY) on the canvas layer
@@ -111,13 +193,16 @@ void floodFill(int startX, int startY) {
   canvas.loadPixels();
 
   color target = canvas.pixels[startY * width + startX];
-  color fillCol = color(red(FILL_COLOR), green(FILL_COLOR), blue(FILL_COLOR));
+  color fillCol = currentColor;
 
   // Clicking an area that is already the fill color does nothing
-  if (similar(target, fillCol)) {
+  if (target == fillCol) {
     canvas.endDraw();
     return;
   }
+
+  // White areas use a high tolerance, colored areas a low one
+  int tol = isNearWhite(target) ? FILL_TOLERANCE : COLOR_FILL_TOLERANCE;
 
   int[] stack = new int[width * height];
   int sp = 0;
@@ -131,10 +216,10 @@ void floodFill(int startX, int startY) {
     int y = idx / width;
 
     // Check left, right, up, down neighbors
-    if (x > 0)          sp = tryFill(idx - 1, target, fillCol, stack, sp);
-    if (x < width - 1)  sp = tryFill(idx + 1, target, fillCol, stack, sp);
-    if (y > 0)          sp = tryFill(idx - width, target, fillCol, stack, sp);
-    if (y < height - 1) sp = tryFill(idx + width, target, fillCol, stack, sp);
+    if (x > 0)          sp = tryFill(idx - 1, target, fillCol, tol, stack, sp);
+    if (x < width - 1)  sp = tryFill(idx + 1, target, fillCol, tol, stack, sp);
+    if (y > 0)          sp = tryFill(idx - width, target, fillCol, tol, stack, sp);
+    if (y < height - 1) sp = tryFill(idx + width, target, fillCol, tol, stack, sp);
   }
 
   canvas.updatePixels();
@@ -142,8 +227,8 @@ void floodFill(int startX, int startY) {
 }
 
 // Fill one pixel if it matches the target area and add it to the stack
-int tryFill(int idx, color target, color fillCol, int[] stack, int sp) {
-  if (similar(canvas.pixels[idx], target) && canvas.pixels[idx] != fillCol) {
+int tryFill(int idx, color target, color fillCol, int tol, int[] stack, int sp) {
+  if (similar(canvas.pixels[idx], target, tol) && canvas.pixels[idx] != fillCol) {
     canvas.pixels[idx] = fillCol;
     stack[sp++] = idx;
   }
@@ -233,7 +318,7 @@ void drawFillIcon(float cx, float cy) {
   stroke(0);
   strokeWeight(1);
 
-  // Paint drop (falling out of the bucket)
+  // Paint drop
   fill(40);
   noStroke();
   ellipse(11, 8, 6, 6);
@@ -282,8 +367,9 @@ void drawControls() {
     text("Scroll wheel:  tool thickness", boxX + 12, boxY + 72);
     text("Up / Down or + / -:  tool thickness", boxX + 12, boxY + 90);
     text("P / E / F:  pencil / eraser / fill", boxX + 12, boxY + 108);
-    text("C:  clear canvas", boxX + 12, boxY + 126);
-    text("H:  hide controls", boxX + 12, boxY + 144);
+    text("Top center button:  pick a color", boxX + 12, boxY + 126);
+    text("C:  clear canvas", boxX + 12, boxY + 144);
+    text("H:  hide controls", boxX + 12, boxY + 162);
   }
 
   // The settings button always stays visible
@@ -418,6 +504,30 @@ void adjustSize(int change) {
 // ---------- Input ----------
 
 void mousePressed() {
+  // Color button: open or close the palette
+  if (overRect(cpBtnX(), cpBtnY(), CP_BTN_W, CP_BTN_H)) {
+    showPalette = !showPalette;
+    uiClick = true;
+    return;
+  }
+
+  // Color palette: pick a color
+  if (showPalette && overRect(cpPanelX(), cpPanelY(), cpPanelW(), cpPanelH())) {
+    uiClick = true;
+    for (int i = 0; i < palette.length; i++) {
+      if (overRect(swatchX(i), swatchY(), CP_SWATCH, CP_SWATCH)) {
+        currentColor = palette[i];
+        showPalette = false;
+        // Picking a color while the eraser is selected switches back to the pencil
+        if (currentTool == ERASER) currentTool = PENCIL;
+      }
+    }
+    return;
+  }
+
+  // Clicking anywhere else closes the palette
+  showPalette = false;
+
   // Tool buttons
   for (int i = 0; i < NUM_TOOLS; i++) {
     if (overRect(toolBtnX(), toolBtnY(i), TB_BTN, TB_BTN)) {
