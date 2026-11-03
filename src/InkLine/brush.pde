@@ -17,9 +17,3 @@ void display() {
   fill(200,7,88);
   rect(x,y,50,50);
 }
-
-void jump() {}
-
-void fire() {}
-
-}
