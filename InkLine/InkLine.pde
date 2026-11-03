@@ -1,5 +1,5 @@
 // Ian Gorchos
 
-void steup() {}
+void setup() {}
 
 void draw() {}
