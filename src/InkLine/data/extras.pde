@@ -1,5 +1,4 @@
 // Owen Sorensen
-
 int sensitivity = 1;
 
 boolean showSettings = false;
