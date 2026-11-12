@@ -1,4 +1,4 @@
-//Ian Hundley
+// Connor DeWeerd
 
 int PENCIL = 0;
 int ERASER = 1;
@@ -108,12 +108,17 @@ void drawFillIcon(float x, float y) {
   fill(40);
   rect(x - 9, y - 9, 18, 4, 2);
 
+  fill(90, 150, 230);
   noStroke();
   ellipse(x + 11, y + 8, 6, 6);
   triangle(x + 8.5, y + 6.5, x + 13.5, y + 6.5, x + 11, y + 1);
 }
 
 void floodFill(int startX, int startY) {
+  if (startX < 0 || startX >= width || startY < 0 || startY >= height) {
+    return;
+  }
+
   canvas.beginDraw();
   canvas.loadPixels();
 
