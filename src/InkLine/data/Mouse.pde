@@ -1,3 +1,5 @@
+// Ian Hundley
+
 int penSize = 3;
 int eraserSize = 20;
 boolean uiClick = false;
@@ -125,6 +127,7 @@ void updateBox() {
   settingsBtnX = boxX + boxW - 36;
   settingsBtnY = boxY + 8;
 
+  panelX = width - panelW - 10;
   panelY = boxY + boxH + 8;
   trackY = panelY + 58;
   themeY = panelY + 84;
