@@ -1,3 +1,5 @@
+// Owen Sorensen
+
 int sensitivity = 1;
 
 boolean showSettings = false;
@@ -12,7 +14,7 @@ color hoverColor;
 color activeColor;
 color trackColor;
 
-int settingsBtnX = 524;
+int settingsBtnX = 754;
 int settingsBtnY = 18;
 int settingsBtnSize = 26;
 
