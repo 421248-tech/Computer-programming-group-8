@@ -1,103 +1,200 @@
-// Connor DeWeerd
-// Tools: toolbar, tool icons, fill tool, and color picker
+int PENCIL = 0;
+int ERASER = 1;
+int FILL = 2;
+int numTools = 3;
+int currentTool = PENCIL;
 
-// Tools (0 = pencil, 1 = eraser, 2 = fill)
-int tool = 0;
+color[] palette = {
+  color(0), color(230, 40, 40), color(255, 140, 0), color(255, 210, 0),
+  color(40, 170, 70), color(40, 100, 230), color(75, 0, 130), color(150, 64, 200)
+};
+color currentColor = color(0);
+boolean showPalette = false;
 
-// Colors: black first, then rainbow
-color[] colors = { #000000, #E62828, #FF8C00, #FFD200, #28AA46, #2864E6, #4B0082, #9640C8 };
-color currentColor = #000000;
-boolean showColors = false;
+int toolbarX = 10;
+int toolbarY = 10;
+int toolBtnSize = 40;
+int toolBtnX = 18;
+int toolbarW = 56;
+int toolbarH = 160;
 
-// Fill settings
-int whiteTolerance = 128;
-int colorTolerance = 40;
-
-// Toolbar position and sizes
-int tbX = 10;
-int tbY = 10;
-int btnSize = 40;
-int pad = 8;
-
-// Color picker position and sizes
-int cpW = 56;
-int cpH = 30;
+int paletteBtnX = 372;
+int paletteBtnY = 10;
+int paletteBtnW = 56;
+int paletteBtnH = 30;
 int swatchSize = 28;
-int cpPad = 8;
+int swatchY = 56;
+int palettePanelX = 252;
+int palettePanelY = 48;
+int palettePanelW = 296;
+int palettePanelH = 44;
+
+int toolBtnY(int i) {
+  return toolbarY + 8 + i * 48;
+}
 
 void drawToolbar() {
-  // Toolbar box
-  int boxW = btnSize + pad * 2;
-  int boxH = 3 * (btnSize + pad) + pad;
-  
-  stroke(150);
+  stroke(lineColor);
   strokeWeight(1);
-  fill(230);
-  rect(tbX, tbY, boxW, boxH, 8);
+  fill(panelColor);
+  rect(toolbarX, toolbarY, toolbarW, toolbarH, 8);
 
-  // Draw the 3 tool buttons
-  for (int i = 0; i < 3; i++) {
-    int bx = tbX + pad;
-    int by = tbY + pad + i * (btnSize + pad);
+  for (int i = 0; i < numTools; i++) {
+    int bx = toolBtnX;
+    int by = toolBtnY(i);
 
-    stroke(150);
+    stroke(lineColor);
     strokeWeight(1);
-    
-    // Highlight if selected or hovering
-    if (tool == i) {
-      fill(180, 210, 255);
-    } else if (mouseX > bx && mouseX < bx + btnSize && mouseY > by && mouseY < by + btnSize) {
-      fill(210);
+    if (currentTool == i) {
+      fill(activeColor);
+    } else if (overRect(bx, by, toolBtnSize, toolBtnSize)) {
+      fill(hoverColor);
     } else {
-      fill(245);
+      fill(buttonColor);
     }
-    
-    rect(bx, by, btnSize, btnSize, 6);
+    rect(bx, by, toolBtnSize, toolBtnSize, 6);
 
-    // Draw the icon inside the button
-    float cx = bx + btnSize / 2;
-    float cy = by + btnSize / 2;
-    
-    if (i == 0) {
-      drawPencil(cx, cy);
-    } else if (i == 1) {
-      drawEraser(cx, cy);
-    } else if (i == 2) {
-      drawFill(cx, cy);
+    float cx = bx + toolBtnSize / 2;
+    float cy = by + toolBtnSize / 2;
+    if (i == PENCIL) {
+      drawPencilIcon(cx, cy);
+    }
+    if (i == ERASER) {
+      drawEraserIcon(cx, cy);
+    }
+    if (i == FILL) {
+      drawFillIcon(cx, cy);
     }
   }
 }
 
-void drawPencil(float x, float y) {
+void drawPencilIcon(float x, float y) {
   stroke(0);
   strokeWeight(1);
 
-  // Yellow body (drawn straight up and down)
   fill(250, 200, 60);
-  rect(x - 4, y - 10, 8, 16);
+  quad(x - 12, y + 6, x - 6, y + 12, x + 10, y - 4, x + 4, y - 10);
 
-  // Pink eraser on top
-  fill(235, 130, 140);
-  rect(x - 4, y - 14, 8, 4);
-
-  // Wood tip
   fill(235, 205, 160);
-  triangle(x - 4, y + 6, x + 4, y + 6, x, y + 14);
+  triangle(x - 12, y + 6, x - 6, y + 12, x - 14, y + 14);
 
-  // Pencil lead
-  fill(40);
-  triangle(x - 1.5, y + 11, x + 1.5, y + 11, x, y + 14);
+  fill(235, 130, 140);
+  quad(x + 4, y - 10, x + 10, y - 4, x + 13, y - 7, x + 7, y - 13);
 }
 
-void drawEraser(float x, float y) {
+void drawEraserIcon(float x, float y) {
   stroke(0);
   strokeWeight(1);
 
-  // Pink part
   fill(240, 150, 165);
-  rect(x - 12, y - 7, 16, 14);
-  
-  // White sleeve part
-  fill(255);
-  rect(x + 4, y - 7, 8, 14);
+  rect(x - 12, y - 6, 14, 12, 3);
+
+  fill(170, 175, 190);
+  rect(x + 2, y - 6, 10, 12, 3);
+}
+
+void drawFillIcon(float x, float y) {
+  stroke(0);
+  strokeWeight(1);
+
+  noFill();
+  arc(x, y - 6, 18, 18, PI, TWO_PI);
+
+  fill(90, 150, 230);
+  quad(x - 9, y - 6, x + 9, y - 6, x + 6, y + 9, x - 6, y + 9);
+
+  fill(40);
+  rect(x - 9, y - 9, 18, 4, 2);
+
+  noStroke();
+  ellipse(x + 11, y + 8, 6, 6);
+  triangle(x + 8.5, y + 6.5, x + 13.5, y + 6.5, x + 11, y + 1);
+}
+
+void floodFill(int startX, int startY) {
+  canvas.beginDraw();
+  canvas.loadPixels();
+
+  color target = canvas.pixels[startY * width + startX];
+
+  if (target != currentColor) {
+    int[] listX = new int[width * height];
+    int[] listY = new int[width * height];
+    int count = 0;
+
+    int[] dx = {1, -1, 0, 0};
+    int[] dy = {0, 0, 1, -1};
+
+    canvas.pixels[startY * width + startX] = currentColor;
+    listX[count] = startX;
+    listY[count] = startY;
+    count++;
+
+    while (count > 0) {
+      count--;
+      int x = listX[count];
+      int y = listY[count];
+
+      for (int i = 0; i < 4; i++) {
+        int nx = x + dx[i];
+        int ny = y + dy[i];
+
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          if (canvas.pixels[ny * width + nx] == target) {
+            canvas.pixels[ny * width + nx] = currentColor;
+            listX[count] = nx;
+            listY[count] = ny;
+            count++;
+          }
+        }
+      }
+    }
+  }
+
+  canvas.updatePixels();
+  canvas.endDraw();
+}
+
+int swatchX(int i) {
+  return palettePanelX + 8 + i * 36;
+}
+
+void drawColorButton() {
+  stroke(lineColor);
+  strokeWeight(1);
+  if (showPalette) {
+    fill(activeColor);
+  } else if (overRect(paletteBtnX, paletteBtnY, paletteBtnW, paletteBtnH)) {
+    fill(hoverColor);
+  } else {
+    fill(buttonColor);
+  }
+  rect(paletteBtnX, paletteBtnY, paletteBtnW, paletteBtnH, 6);
+
+  stroke(lineColor);
+  fill(currentColor);
+  rect(paletteBtnX + 8, paletteBtnY + 7, 24, 16, 3);
+
+  noStroke();
+  fill(textColor);
+  triangle(paletteBtnX + 38, paletteBtnY + 12, paletteBtnX + 48, paletteBtnY + 12, paletteBtnX + 43, paletteBtnY + 19);
+}
+
+void drawPalette() {
+  stroke(lineColor);
+  strokeWeight(1);
+  fill(panelColor);
+  rect(palettePanelX, palettePanelY, palettePanelW, palettePanelH, 8);
+
+  for (int i = 0; i < palette.length; i++) {
+    if (palette[i] == currentColor) {
+      stroke(textColor);
+      strokeWeight(3);
+    } else {
+      stroke(lineColor);
+      strokeWeight(1);
+    }
+    fill(palette[i]);
+    rect(swatchX(i), swatchY, swatchSize, swatchSize, 5);
+  }
 }
