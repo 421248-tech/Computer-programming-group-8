@@ -1,122 +1,97 @@
-//Ian Hundley
-int penSize = 3;           // current pen thickness
-int eraserSize = 20;       // current eraser thickness
-boolean uiClick = false;   // true when a click started on the UI (so we don't draw)
+int penSize = 3;
+int eraserSize = 20;
+boolean uiClick = false;
 
-// Controls box layout (changes size when hidden)
-int boxW, boxH, boxX, boxY;
-final int FULL_W = 230;
-final int FULL_H = 181;
-final int HIDDEN_W = 44;
-final int HIDDEN_H = 42;
-boolean controlsHidden = false;  // when true, only the settings button stays visible
+int boxX = 560;
+int boxY = 10;
+int boxW = 230;
+int boxH = 181;
+boolean controlsHidden = false;
 
-// ---------- Drawing ----------
-
-// Draws one segment of pencil or eraser stroke (call between canvas.beginDraw/endDraw)
 void drawStroke() {
-  // Right mouse button always erases; left button uses the selected tool
-  boolean erasing = (mouseButton == RIGHT) || (mouseButton == LEFT && currentTool == ERASER);
-  boolean drawing = (mouseButton == LEFT && currentTool == PENCIL);
-
-  if (drawing) {
+  if (mouseButton == LEFT && currentTool == PENCIL) {
     canvas.stroke(currentColor);
     canvas.strokeWeight(penSize);
     canvas.line(pmouseX, pmouseY, mouseX, mouseY);
-  } else if (erasing) {
+  }
+
+  if (mouseButton == RIGHT || (mouseButton == LEFT && currentTool == ERASER)) {
     canvas.stroke(255);
     canvas.strokeWeight(eraserSize);
     canvas.line(pmouseX, pmouseY, mouseX, mouseY);
   }
 }
 
-// True when the eraser is the tool currently in use
-boolean usingEraser() {
-  return (mousePressed && mouseButton == RIGHT) || currentTool == ERASER;
-}
-
-// Change the thickness of whichever tool is in use (change can be negative)
 void adjustSize(int change) {
-  if (usingEraser()) {
+  if (currentTool == ERASER || (mousePressed && mouseButton == RIGHT)) {
     eraserSize = constrain(eraserSize + change * 2, 2, 100);
   } else {
     penSize = constrain(penSize + change, 1, 50);
   }
 }
 
-// ---------- Mouse input ----------
-
 void mousePressed() {
-  // Color button: open or close the palette
-  if (overRect(cpBtnX(), cpBtnY(), CP_BTN_W, CP_BTN_H)) {
+  if (overRect(paletteBtnX, paletteBtnY, paletteBtnW, paletteBtnH)) {
     showPalette = !showPalette;
     uiClick = true;
     return;
   }
 
-  // Color palette: pick a color
-  if (showPalette && overRect(cpPanelX(), cpPanelY(), cpPanelW(), cpPanelH())) {
+  if (showPalette && overRect(palettePanelX, palettePanelY, palettePanelW, palettePanelH)) {
     uiClick = true;
     for (int i = 0; i < palette.length; i++) {
-      if (overRect(swatchX(i), swatchY(), CP_SWATCH, CP_SWATCH)) {
+      if (overRect(swatchX(i), swatchY, swatchSize, swatchSize)) {
         currentColor = palette[i];
         showPalette = false;
-        // Picking a color while the eraser is selected switches back to the pencil
-        if (currentTool == ERASER) currentTool = PENCIL;
+        if (currentTool == ERASER) {
+          currentTool = PENCIL;
+        }
       }
     }
     return;
   }
 
-  // Clicking anywhere else closes the palette
   showPalette = false;
 
-  // Tool buttons
-  for (int i = 0; i < NUM_TOOLS; i++) {
-    if (overRect(toolBtnX(), toolBtnY(i), TB_BTN, TB_BTN)) {
+  for (int i = 0; i < numTools; i++) {
+    if (overRect(toolBtnX, toolBtnY(i), toolBtnSize, toolBtnSize)) {
       currentTool = i;
       uiClick = true;
       return;
     }
   }
 
-  // Anywhere else on the toolbar: don't draw underneath it
-  if (overRect(TB_X, TB_Y, toolbarW(), toolbarH())) {
+  if (overRect(toolbarX, toolbarY, toolbarW, toolbarH)) {
     uiClick = true;
     return;
   }
 
-  // Settings button
-  if (overRect(btnX(), btnY(), btnS(), btnS())) {
+  if (overRect(settingsBtnX, settingsBtnY, settingsBtnSize, settingsBtnSize)) {
     showSettings = !showSettings;
     uiClick = true;
     return;
   }
 
-  // Settings panel
-  if (showSettings && overRect(panelX(), panelY(), panelW(), panelH())) {
+  if (showSettings && overRect(panelX, panelY, panelW, panelH)) {
     uiClick = true;
 
-    // Slider
-    if (overRect(trackX1() - 10, trackY() - 14, trackX2() - trackX1() + 20, 28)) {
+    if (overRect(trackX1 - 10, trackY - 14, trackX2 - trackX1 + 20, 28)) {
       draggingSlider = true;
       updateSlider();
     }
 
-    // Dark/light mode button
-    if (overRect(themeX(), themeY(), themeW(), themeH())) {
+    if (overRect(themeX, themeY, themeW, themeH)) {
       darkMode = !darkMode;
+      updateColors();
     }
     return;
   }
 
-  // Anywhere else on the controls box: don't draw underneath it
   if (overRect(boxX, boxY, boxW, boxH)) {
     uiClick = true;
     return;
   }
 
-  // Fill tool: left click fills the area under the mouse
   if (mouseButton == LEFT && currentTool == FILL) {
     floodFill(mouseX, mouseY);
   }
@@ -133,30 +108,36 @@ void mouseReleased() {
   uiClick = false;
 }
 
-// Scroll wheel changes the thickness of the current tool
 void mouseWheel(MouseEvent event) {
-  adjustSize(-(int) event.getCount() * sensitivity);
+  adjustSize(-event.getCount() * sensitivity);
 }
 
-// ---------- Controls box ----------
-
-// Resize the controls box depending on whether controls are hidden
 void updateBox() {
-  boxW = controlsHidden ? HIDDEN_W : FULL_W;
-  boxH = controlsHidden ? HIDDEN_H : FULL_H;
+  if (controlsHidden) {
+    boxW = 44;
+    boxH = 42;
+  } else {
+    boxW = 230;
+    boxH = 181;
+  }
   boxX = width - boxW - 10;
+
+  settingsBtnX = boxX + boxW - 36;
+  settingsBtnY = boxY + 8;
+
+  panelY = boxY + boxH + 8;
+  trackY = panelY + 58;
+  themeY = panelY + 84;
 }
 
 void drawControls() {
-  // Box
-  stroke(uiStroke());
+  stroke(lineColor);
   strokeWeight(1);
-  fill(uiFill());
+  fill(panelColor);
   rect(boxX, boxY, boxW, boxH, 8);
 
-  // Text (only when controls are shown)
-  if (!controlsHidden) {
-    fill(uiText());
+  if (controlsHidden == false) {
+    fill(textColor);
     textAlign(LEFT, TOP);
     textSize(14);
     text("Controls", boxX + 12, boxY + 10);
@@ -172,25 +153,19 @@ void drawControls() {
     text("H:  hide controls", boxX + 12, boxY + 162);
   }
 
-  // The settings button always stays visible
   drawSettingsButton();
 }
 
-// ---------- Keyboard shortcuts ----------
-
 void keyPressed() {
-  // Press 'c' to clear the canvas
   if (key == 'c' || key == 'C') {
     clearCanvas();
   }
 
-  // Press 'h' to hide or show the controls
   if (key == 'h' || key == 'H') {
     controlsHidden = !controlsHidden;
     updateBox();
   }
 
-  // Press 'p' for the pencil, 'e' for the eraser, 'f' for fill
   if (key == 'p' || key == 'P') {
     currentTool = PENCIL;
   }
@@ -201,21 +176,18 @@ void keyPressed() {
     currentTool = FILL;
   }
 
-  // UP arrow or '+' makes the current tool thicker
   if (keyCode == UP || key == '+' || key == '=') {
     adjustSize(1);
   }
 
-  // DOWN arrow or '-' makes the current tool thinner
   if (keyCode == DOWN || key == '-') {
     adjustSize(-1);
   }
 
-  // ']' makes the eraser bigger
   if (key == ']') {
     eraserSize = min(eraserSize + 2, 100);
   }
-
-  // '[' makes the eraser smaller
   if (key == '[') {
     eraserSize = max(eraserSize - 2, 2);
+  }
+}
