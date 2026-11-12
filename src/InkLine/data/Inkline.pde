@@ -1,5 +1,6 @@
 //Ian Gorchos
 
+PGraphics canvas;
 
 void setup() {
   size(800, 600);
