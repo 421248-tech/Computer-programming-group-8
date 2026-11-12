@@ -1,123 +1,129 @@
-//Owen Sorensen
-int sensitivity = 1;   // scroll wheel sensitivity (1 to 10)
+int sensitivity = 1;
 
-// Settings state
 boolean showSettings = false;
 boolean draggingSlider = false;
-boolean darkMode = false;        // only affects the UI, never the canvas
+boolean darkMode = false;
 
-// ---------- UI theme colors (canvas is not affected) ----------
+color panelColor;
+color textColor;
+color lineColor;
+color buttonColor;
+color hoverColor;
+color activeColor;
+color trackColor;
 
-color uiFill()    { return darkMode ? color(50, 50, 50, 235)    : color(245, 245, 245, 230); }
-color uiText()    { return darkMode ? color(240) : color(0); }
-color uiStroke()  { return darkMode ? color(200) : color(0); }
-color btnFill()   { return darkMode ? color(70)  : color(255); }
-color btnHover()  { return darkMode ? color(95)  : color(225); }
-color btnActive() { return darkMode ? color(80, 100, 150) : color(200, 215, 255); }
-color trackColor(){ return darkMode ? color(150) : color(120); }
+int settingsBtnX = 524;
+int settingsBtnY = 18;
+int settingsBtnSize = 26;
 
-// ---------- Settings button ----------
+int panelX = 560;
+int panelY = 199;
+int panelW = 230;
+int panelH = 122;
 
-// Settings button (top right of the controls box)
-int btnX() { return boxX + boxW - 36; }
-int btnY() { return boxY + 8; }
-int btnS() { return 26; }
+int trackX1 = 576;
+int trackX2 = 774;
+int trackY = 257;
 
-void drawSettingsButton() {
-  boolean hover = overRect(btnX(), btnY(), btnS(), btnS());
+int themeX = 572;
+int themeY = 283;
+int themeW = 206;
+int themeH = 26;
 
-  stroke(uiStroke());
-  strokeWeight(1);
-  if (showSettings) fill(btnActive());
-  else if (hover) fill(btnHover());
-  else fill(btnFill());
-  rect(btnX(), btnY(), btnS(), btnS(), 5);
-
-  // Simple gear icon
-  float cx = btnX() + btnS() / 2.0;
-  float cy = btnY() + btnS() / 2.0;
-  pushMatrix();
-  translate(cx, cy);
-  stroke(uiText());
-  strokeWeight(2);
-  for (int i = 0; i < 8; i++) {
-    float a = i * TWO_PI / 8;
-    line(cos(a) * 6, sin(a) * 6, cos(a) * 9, sin(a) * 9);
+void updateColors() {
+  if (darkMode) {
+    panelColor = color(50, 50, 50, 235);
+    textColor = color(240);
+    lineColor = color(200);
+    buttonColor = color(70);
+    hoverColor = color(95);
+    activeColor = color(80, 100, 150);
+    trackColor = color(150);
+  } else {
+    panelColor = color(245, 245, 245, 230);
+    textColor = color(0);
+    lineColor = color(0);
+    buttonColor = color(255);
+    hoverColor = color(225);
+    activeColor = color(200, 215, 255);
+    trackColor = color(120);
   }
-  strokeWeight(1);
-  fill(btnFill());
-  ellipse(0, 0, 13, 13);
-  fill(uiText());
-  ellipse(0, 0, 4, 4);
-  popMatrix();
 }
 
-// ---------- Settings panel ----------
+void drawSettingsButton() {
+  stroke(lineColor);
+  strokeWeight(1);
+  if (showSettings) {
+    fill(activeColor);
+  } else if (overRect(settingsBtnX, settingsBtnY, settingsBtnSize, settingsBtnSize)) {
+    fill(hoverColor);
+  } else {
+    fill(buttonColor);
+  }
+  rect(settingsBtnX, settingsBtnY, settingsBtnSize, settingsBtnSize, 5);
 
-// The panel stays full width and right-aligned, whether or not controls are hidden
-int panelX() { return width - FULL_W - 10; }
-int panelY() { return boxY + boxH + 8; }
-int panelW() { return FULL_W; }
-int panelH() { return 122; }
-
-int trackX1() { return panelX() + 16; }
-int trackX2() { return panelX() + panelW() - 16; }
-int trackY()  { return panelY() + 58; }
-
-// Dark/light mode button
-int themeX() { return panelX() + 12; }
-int themeY() { return panelY() + 84; }
-int themeW() { return panelW() - 24; }
-int themeH() { return 26; }
+  float cx = settingsBtnX + settingsBtnSize / 2;
+  float cy = settingsBtnY + settingsBtnSize / 2;
+  stroke(textColor);
+  strokeWeight(2);
+  for (int i = 0; i < 8; i++) {
+    float angle = i * TWO_PI / 8;
+    line(cx + cos(angle) * 6, cy + sin(angle) * 6, cx + cos(angle) * 9, cy + sin(angle) * 9);
+  }
+  strokeWeight(1);
+  fill(buttonColor);
+  ellipse(cx, cy, 13, 13);
+  fill(textColor);
+  ellipse(cx, cy, 4, 4);
+}
 
 void drawSettings() {
-  // Panel
-  stroke(uiStroke());
+  stroke(lineColor);
   strokeWeight(1);
-  fill(uiFill());
-  rect(panelX(), panelY(), panelW(), panelH(), 8);
+  fill(panelColor);
+  rect(panelX, panelY, panelW, panelH, 8);
 
-  // Text
-  fill(uiText());
+  fill(textColor);
   textAlign(LEFT, TOP);
   textSize(14);
-  text("Settings", panelX() + 12, panelY() + 10);
+  text("Settings", panelX + 12, panelY + 10);
   textSize(12);
-  text("Scroll sensitivity:  " + sensitivity, panelX() + 12, panelY() + 32);
+  text("Scroll sensitivity:  " + sensitivity, panelX + 12, panelY + 32);
 
-  // Slider track
-  stroke(trackColor());
+  stroke(trackColor);
   strokeWeight(4);
-  line(trackX1(), trackY(), trackX2(), trackY());
+  line(trackX1, trackY, trackX2, trackY);
 
-  // Slider knob
-  float kx = map(sensitivity, 1, 10, trackX1(), trackX2());
-  stroke(uiStroke());
+  float dotX = map(sensitivity, 1, 10, trackX1, trackX2);
+  stroke(lineColor);
   strokeWeight(1);
-  fill(btnFill());
-  ellipse(kx, trackY(), 16, 16);
+  fill(buttonColor);
+  ellipse(dotX, trackY, 16, 16);
 
-  // Dark/light mode button
-  boolean hover = overRect(themeX(), themeY(), themeW(), themeH());
-  stroke(uiStroke());
+  stroke(lineColor);
   strokeWeight(1);
-  fill(hover ? btnHover() : btnFill());
-  rect(themeX(), themeY(), themeW(), themeH(), 5);
+  if (overRect(themeX, themeY, themeW, themeH)) {
+    fill(hoverColor);
+  } else {
+    fill(buttonColor);
+  }
+  rect(themeX, themeY, themeW, themeH, 5);
 
-  fill(uiText());
+  fill(textColor);
   textAlign(CENTER, CENTER);
   textSize(12);
-  text(darkMode ? "Switch to Light Mode" : "Switch to Dark Mode",
-       themeX() + themeW() / 2.0, themeY() + themeH() / 2.0);
+  if (darkMode) {
+    text("Switch to Light Mode", themeX + themeW / 2, themeY + themeH / 2);
+  } else {
+    text("Switch to Dark Mode", themeX + themeW / 2, themeY + themeH / 2);
+  }
   textAlign(LEFT, TOP);
 }
 
 void updateSlider() {
-  float v = map(mouseX, trackX1(), trackX2(), 1, 10);
-  sensitivity = constrain(round(v), 1, 10);
+  float value = map(mouseX, trackX1, trackX2, 1, 10);
+  sensitivity = constrain(round(value), 1, 10);
 }
-
-// ---------- Helpers ----------
 
 boolean overRect(int x, int y, int w, int h) {
   return mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
