@@ -8,7 +8,10 @@ void setup() {
   canvas.noSmooth();  
   clearCanvas();
   updateColors();
-  updateBox();
+  updateBox(); 
+  pencilImg = loadImage("pencil.png");
+  eraserImg = loadImage("Eraser.png");
+  bucketImg = loadImage("Bucket.png");
 }
 
 void draw() {
