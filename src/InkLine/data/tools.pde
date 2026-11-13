@@ -6,6 +6,10 @@ int FILL = 2;
 int numTools = 3;
 int currentTool = PENCIL;
 
+PImage pencilImg;
+PImage eraserImg;
+PImage bucketImg;
+
 color[] palette = {
   color(0), color(230, 40, 40), color(255, 140, 0), color(255, 210, 0),
   color(40, 170, 70), color(40, 100, 230), color(75, 0, 130), color(150, 64, 200)
@@ -56,62 +60,16 @@ void drawToolbar() {
     }
     rect(bx, by, toolBtnSize, toolBtnSize, 6);
 
-    float cx = bx + toolBtnSize / 2;
-    float cy = by + toolBtnSize / 2;
     if (i == PENCIL) {
-      drawPencilIcon(cx, cy);
+      image(pencilImg, bx + 4, by + 4, 32, 32);
     }
     if (i == ERASER) {
-      drawEraserIcon(cx, cy);
+      image(eraserImg, bx + 4, by + 4, 32, 32);
     }
     if (i == FILL) {
-      drawFillIcon(cx, cy);
+      image(bucketImg, bx + 4, by + 4, 32, 32);
     }
   }
-}
-
-void drawPencilIcon(float x, float y) {
-  stroke(0);
-  strokeWeight(1);
-
-  fill(250, 200, 60);
-  quad(x - 12, y + 6, x - 6, y + 12, x + 10, y - 4, x + 4, y - 10);
-
-  fill(235, 205, 160);
-  triangle(x - 12, y + 6, x - 6, y + 12, x - 14, y + 14);
-
-  fill(235, 130, 140);
-  quad(x + 4, y - 10, x + 10, y - 4, x + 13, y - 7, x + 7, y - 13);
-}
-
-void drawEraserIcon(float x, float y) {
-  stroke(0);
-  strokeWeight(1);
-
-  fill(240, 150, 165);
-  rect(x - 12, y - 6, 14, 12, 3);
-
-  fill(170, 175, 190);
-  rect(x + 2, y - 6, 10, 12, 3);
-}
-
-void drawFillIcon(float x, float y) {
-  stroke(0);
-  strokeWeight(1);
-
-  noFill();
-  arc(x, y - 6, 18, 18, PI, TWO_PI);
-
-  fill(90, 150, 230);
-  quad(x - 9, y - 6, x + 9, y - 6, x + 6, y + 9, x - 6, y + 9);
-
-  fill(40);
-  rect(x - 9, y - 9, 18, 4, 2);
-
-  fill(90, 150, 230);
-  noStroke();
-  ellipse(x + 11, y + 8, 6, 6);
-  triangle(x + 8.5, y + 6.5, x + 13.5, y + 6.5, x + 11, y + 1);
 }
 
 void floodFill(int startX, int startY) {
