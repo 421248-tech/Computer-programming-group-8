@@ -9,7 +9,7 @@ void setup() {
   clearCanvas();
   updateColors();
   updateBox(); 
-  pencilImg = loadImage("pencil.png");
+  pencilImg = loadImage("Pencil.png");
   eraserImg = loadImage("Eraser.png");
   bucketImg = loadImage("Bucket.png");
 }
